@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1f2a24">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Presenze Casa Rosebery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --ink: #1f2a24;
+    --ink-soft: #55615a;
+    --paper: #f7f3ec;
+    --card: #ffffff;
+    --line: #e4ddd1;
+    --accent: #8a6a3b;
+    --ok: #2f7a4f;
+    --ok-bg: #e6f2ea;
+    --warn: #9a5b00;
+    --warn-bg: #fdf1dc;
+    --err: #a3302a;
+    --err-bg: #fbe7e5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 17px/1.5 Jost, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 28px 16px 40px; min-height: 100%; display: flex; flex-direction: column; }
+  .brand { font-family: "Cormorant Garamond", serif; font-weight: 600; font-size: 30px; letter-spacing: .02em; text-align: center; margin: 0; }
+  .sub { text-align: center; color: var(--ink-soft); margin: 2px 0 24px; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px 18px; }
+  label { display: block; font-weight: 500; margin: 0 0 6px; }
+  select, input {
+    width: 100%; font: inherit; font-size: 18px; padding: 14px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: #fff; color: var(--ink); appearance: none;
+  }
+  select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .field { margin-bottom: 18px; }
+  .pin { letter-spacing: .5em; text-align: center; }
+  button {
+    font: inherit; font-weight: 600; font-size: 18px; border: 0; border-radius: 12px; padding: 16px;
+    width: 100%; cursor: pointer; background: var(--ink); color: #fff;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .note { font-size: 14px; color: var(--ink-soft); margin: 14px 0 0; }
+  .msg { border-radius: 12px; padding: 14px 16px; margin-top: 16px; font-weight: 500; }
+  .msg.ok { background: var(--ok-bg); color: var(--ok); }
+  .msg.warn { background: var(--warn-bg); color: var(--warn); }
+  .msg.err { background: var(--err-bg); color: var(--err); }
+  .result { text-align: center; padding: 26px 10px; }
+  .result .big { font-family: "Cormorant Garamond", serif; font-size: 40px; font-weight: 600; line-height: 1.1; margin: 8px 0; }
+  .result .time { font-size: 56px; font-weight: 500; letter-spacing: .02em; }
+  .hidden { display: none !important; }
+
+  /* ---------- Tablet ---------- */
+  body.kiosk .wrap { max-width: 900px; justify-content: center; }
+  .k-grid { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: center; }
+  @media (min-width: 760px) { .k-grid { grid-template-columns: 1fr 1fr; } }
+  .k-clock { font-size: 72px; font-weight: 500; text-align: center; line-height: 1; }
+  .k-date { text-align: center; color: var(--ink-soft); margin-top: 8px; text-transform: capitalize; }
+  .qr-box { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 20px; text-align: center; }
+  #qr { display: inline-block; }
+  #qr img, #qr canvas { width: min(320px, 70vw) !important; height: auto !important; }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; margin: 16px auto 0; overflow: hidden; max-width: 320px; }
+  .bar i { display: block; height: 100%; background: var(--accent); width: 100%; transition: width 1s linear; }
+  .k-help { font-size: 18px; margin: 14px 0 0; }
+  .overlay { position: fixed; inset: 0; background: rgba(247,243,236,.98); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+  .overlay .card { width: 100%; max-width: 560px; max-height: 92vh; overflow: auto; }
+  .names { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+  .names button { background: #fff; color: var(--ink); border: 1px solid var(--line); font-weight: 500; }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+  .keypad button { font-size: 26px; background: #fff; color: var(--ink); border: 1px solid var(--line); padding: 18px 0; }
+  .pin-dots { text-align: center; font-size: 34px; letter-spacing: .4em; min-height: 46px; }
+  .row { display: flex; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="brand">Casa Rosebery</h1>
+  <p class="sub">Registro presenze</p>
+
+  <!-- Messaggio predefinito -->
+  <section id="v-home" class="card hidden">
+    <p style="margin:0">Per timbrare, inquadra con la fotocamera il QR sul tablet del locale.</p>
+  </section>
+
+  <!-- Timbratura da telefono -->
+  <section id="v-phone" class="hidden">
+    <div id="p-loading" class="card"><p style="margin:0">Verifica del codice…</p></div>
+    <form id="p-form" class="card hidden" autocomplete="off">
+      <div class="field">
+        <label for="p-name">Chi sei?</label>
+        <select id="p-name" required></select>
+      </div>
+      <div class="field">
+        <label for="p-pin">PIN</label>
+        <input id="p-pin" class="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" required>
+      </div>
+      <button id="p-submit" type="submit">Timbra</button>
+      <p class="note">Al momento della timbratura il telefono chiede la posizione. Serve solo a verificare che tu sia nel locale: la posizione non viene salvata, si registra solo l'esito (dentro/fuori). Se preferisci non usare il telefono, puoi timbrare dal tablet con il PIN.</p>
+    </form>
+    <div id="p-result" class="card result hidden"></div>
+    <div id="p-msg"></div>
+  </section>
+
+  <!-- Tablet -->
+  <section id="v-kiosk" class="hidden">
+    <div class="k-grid">
+      <div>
+        <div class="k-clock" id="k-clock">--:--</div>
+        <div class="k-date" id="k-date"></div>
+        <div style="max-width:320px;margin:28px auto 0">
+          <button class="ghost" id="k-manual">Timbra senza telefono</button>
+        </div>
+      </div>
+      <div class="qr-box">
+        <div id="qr"></div>
+        <div class="bar"><i id="k-bar"></i></div>
+        <p class="k-help">Inquadra con la fotocamera del telefono</p>
+        <div id="k-status"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Tablet: timbratura con PIN -->
+<div id="k-overlay" class="overlay hidden">
+  <div class="card">
+    <div id="o-step-name">
+      <label>Chi sei?</label>
+      <div class="names" id="o-names"></div>
+      <button class="ghost" data-close>Annulla</button>
+    </div>
+    <div id="o-step-pin" class="hidden">
+      <label id="o-who"></label>
+      <div class="pin-dots" id="o-dots"></div>
+      <div class="keypad" id="o-keypad"></div>
+      <div class="row">
+        <button class="ghost" data-close>Annulla</button>
+        <button id="o-ok">Timbra</button>
+      </div>
+    </div>
+    <div id="o-result" class="result hidden"></div>
+  </div>
+</div>
+
+<script>
+/* ===== CONFIGURAZIONE ===== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbxUpVZNXxo30YoiBzTCnKnN61Fd9Az5ft-7lEqhAO3qTI2kr3salElOByh0Oj-TdKMCTQ/exec';   // es. https://script.google.com/macros/s/XXXX/exec
+/* ========================== */
+
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+
+async function apiGet(q) {
+  const r = await fetch(API_URL + '?' + new URLSearchParams(q), { cache: 'no-store' });
+  return r.json();
+}
+async function apiPost(body) {
+  const r = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  });
+  return r.json();
+}
+function show(id) { $(id).classList.remove('hidden'); }
+function hide(id) { $(id).classList.add('hidden'); }
+function msg(el, type, text) { el.innerHTML = text ? '<div class="msg ' + type + '"></div>' : ''; if (text) el.firstChild.textContent = text; }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+
+function resultHtml(r) {
+  let warn = '';
+  if (r.area === 'NO') warn = 'Risulti fuori dal locale: la timbratura è registrata ma verrà segnalata.';
+  else if (r.area === 'Non rilevata') warn = 'Posizione non disponibile: la timbratura è registrata ma verrà segnalata.';
+  else if (r.device === 'DIVERSO' || String(r.device).indexOf('Telefono di') === 0) warn = 'Stai usando un telefono diverso dal solito: la timbratura verrà segnalata.';
+  return '<div style="font-size:44px">' + (r.type === 'Entrata' ? '👋' : '✅') + '</div>' +
+    '<div class="big">' + esc(r.type) + ' registrata</div>' +
+    '<div class="time">' + esc(r.time) + '</div>' +
+    '<p style="margin:6px 0 0">' + esc(r.name) + '</p>' +
+    (warn ? '<div class="msg warn">' + esc(warn) + '</div>' : '');
+}
+
+function deviceId() {
+  let id = store.get('cr_device');
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)));
+    store.set('cr_device', id);
+  }
+  return id;
+}
+
+function getPosition() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy) }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
+}
+
+/* ================= TELEFONO ================= */
+async function phoneMode(token) {
+  show('v-phone');
+  history.replaceState(null, '', location.pathname);   // il codice non resta nella cronologia
+  const out = $('p-msg');
+  let ticket;
+  try {
+    const r = await apiGet({ action: 'open', t: token });
+    hide('p-loading');
+    if (!r.ok) return msg(out, 'err', r.error);
+    ticket = r.ticket;
+    const sel = $('p-name');
+    const saved = store.get('cr_name');
+    sel.innerHTML = '<option value="">Seleziona il tuo nome</option>' +
+      r.staff.map(n => '<option' + (n === saved ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
+    show('p-form');
+    (saved && r.staff.includes(saved) ? $('p-pin') : sel).focus();
+  } catch (e) {
+    hide('p-loading');
+    return msg(out, 'err', 'Connessione non riuscita. Controlla internet e inquadra di nuovo il QR.');
+  }
+
+  $('p-form').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const name = $('p-name').value, pin = $('p-pin').value.trim();
+    if (!name) return msg(out, 'err', 'Seleziona il tuo nome.');
+    if (!/^\d{4,6}$/.test(pin)) return msg(out, 'err', 'Il PIN ha da 4 a 6 cifre.');
+    const btn = $('p-submit');
+    btn.disabled = true; btn.textContent = 'Rilevo la posizione…'; msg(out, '', '');
+    const pos = await getPosition();
+    btn.textContent = 'Registro…';
+    try {
+      const r = await apiPost(Object.assign({ action: 'punch', ticket, name, pin, deviceId: deviceId() }, pos || {}));
+      if (r.ok) {
+        store.set('cr_name', name);
+        hide('p-form');
+        $('p-result').innerHTML = resultHtml(r);
+        show('p-result');
+      } else {
+        msg(out, 'err', r.error);
+        $('p-pin').value = '';
+      }
+    } catch (e) {
+      msg(out, 'err', 'Connessione non riuscita: la timbratura NON è stata registrata. Riprova.');
+    }
+    btn.disabled = false; btn.textContent = 'Timbra';
+  });
+}
+
+/* ================= TABLET ================= */
+function kioskMode(key) {
+  document.body.classList.add('kiosk');
+  show('v-kiosk');
+  const base = location.origin + location.pathname;
+  const qr = new QRCode($('qr'), { text: base, width: 640, height: 640, correctLevel: QRCode.CorrectLevel.M });
+  let staff = [];
+
+  // Orologio
+  const tick = () => {
+    const d = new Date();
+    $('k-clock').textContent = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    $('k-date').textContent = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  };
+  tick(); setInterval(tick, 1000);
+
+  // QR che si rinnova
+  let timer;
+  async function refresh() {
+    clearTimeout(timer);
+    try {
+      const r = await apiGet({ action: 'token', key });
+      if (!r.ok) { msg($('k-status'), 'err', r.error); timer = setTimeout(refresh, 15000); return; }
+      qr.clear(); qr.makeCode(base + '?t=' + encodeURIComponent(r.token));
+      $('qr').style.opacity = 1;
+      msg($('k-status'), '', '');
+      const bar = $('k-bar');
+      bar.style.transition = 'none'; bar.style.width = (r.ttl / 30 * 100) + '%';
+      requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = 'width ' + r.ttl + 's linear'; bar.style.width = '0%'; }));
+      timer = setTimeout(refresh, Math.max(r.ttl, 2) * 1000 + 300);
+    } catch (e) {
+      $('qr').style.opacity = .15;
+      msg($('k-status'), 'err', 'Connessione assente. Nuovo tentativo…');
+      timer = setTimeout(refresh, 5000);
+    }
+  }
+  refresh();
+
+  async function loadStaff() {
+    try { const r = await apiGet({ action: 'staff', key }); if (r.ok) staff = r.staff; } catch (e) {}
+  }
+  loadStaff(); setInterval(loadStaff, 10 * 60 * 1000);
+
+  // Schermo sempre acceso
+  let lock;
+  async function wake() { try { lock = await navigator.wakeLock.request('screen'); } catch (e) {} }
+  wake();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); refresh(); } });
+
+  // Timbratura con PIN sul tablet
+  const ov = $('k-overlay');
+  let who = '', pin = '', closeTimer;
+  const dots = () => { $('o-dots').textContent = '•'.repeat(pin.length) || ' '; };
+  function openOverlay() {
+    who = ''; pin = ''; clearTimeout(closeTimer);
+    show('o-step-name'); hide('o-step-pin'); hide('o-result');
+    $('o-names').innerHTML = staff.length
+      ? staff.map(n => '<button data-name="' + esc(n) + '">' + esc(n) + '</button>').join('')
+      : '<p>Elenco non disponibile: controlla la connessione.</p>';
+    ov.classList.remove('hidden');
+    closeTimer = setTimeout(closeOverlay, 60000);
+  }
+  function closeOverlay() { ov.classList.add('hidden'); pin = ''; clearTimeout(closeTimer); }
+  $('k-manual').onclick = openOverlay;
+  ov.querySelectorAll('[data-close]').forEach(b => b.onclick = closeOverlay);
+  $('o-names').onclick = e => {
+    const b = e.target.closest('button[data-name]'); if (!b) return;
+    who = b.dataset.name; pin = ''; dots();
+    $('o-who').textContent = 'PIN di ' + who;
+    hide('o-step-name'); show('o-step-pin');
+  };
+  $('o-keypad').innerHTML = ['1','2','3','4','5','6','7','8','9','⌫','0','C'].map(k => '<button data-k="' + k + '">' + k + '</button>').join('');
+  $('o-keypad').onclick = e => {
+    const b = e.target.closest('button[data-k]'); if (!b) return;
+    const k = b.dataset.k;
+    if (k === '⌫') pin = pin.slice(0, -1); else if (k === 'C') pin = ''; else if (pin.length < 6) pin += k;
+    dots();
+  };
+  $('o-ok').onclick = async () => {
+    if (!/^\d{4,6}$/.test(pin)) return;
+    const btn = $('o-ok'); btn.disabled = true;
+    let html;
+    try {
+      const r = await apiPost({ action: 'punch', kioskKey: key, name: who, pin });
+      html = r.ok ? resultHtml(r) : '<div class="msg err">' + esc(r.error) + '</div>';
+    } catch (e) {
+      html = '<div class="msg err">Connessione non riuscita: timbratura NON registrata.</div>';
+    }
+    btn.disabled = false; pin = '';
+    hide('o-step-pin'); $('o-result').innerHTML = html; show('o-result');
+    clearTimeout(closeTimer); closeTimer = setTimeout(closeOverlay, 4000);
+  };
+}
+
+/* ================= AVVIO ================= */
+(function start() {
+  if (API_URL.indexOf('script.google.com') === -1) {
+    show('v-home'); $('v-home').innerHTML = '<p style="margin:0">Configurazione incompleta: manca l\'indirizzo dell\'App web (API_URL).</p>';
+    return;
+  }
+  if (params.get('kiosk')) store.set('cr_kiosk', params.get('kiosk'));   // la chiave resta anche nel link salvato sulla Home
+  const kioskKey = params.get('kiosk') || store.get('cr_kiosk');
+  if ((params.has('tablet') || params.get('kiosk')) && kioskKey) return kioskMode(kioskKey);
+  if (params.get('t')) return phoneMode(params.get('t'));
+  show('v-home');
+})();
+</script>
+</body>
+</html>
