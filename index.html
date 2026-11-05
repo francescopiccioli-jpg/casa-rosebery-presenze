@@ -111,8 +111,8 @@
 
     <!-- Profilo in attesa -->
     <div id="p-pending" class="card hidden">
-      <p style="margin:0">Questo telefono è registrato a nome di <b id="p-pending-name"></b>, ma il profilo non è ancora attivo.</p>
-      <p class="note">Chiedi al responsabile di approvarlo. Poi inquadra di nuovo il QR.</p>
+      <p style="margin:0">Questo telefono è registrato a nome di <b id="p-pending-name"></b>, ma il profilo è disattivato.</p>
+      <p class="note">Chiedi al responsabile.</p>
     </div>
 
     <!-- Telefono non registrato -->
@@ -145,7 +145,7 @@
       <button type="submit">Registrati</button>
       <div style="height:10px"></div>
       <button type="button" class="ghost" data-back>Indietro</button>
-      <p class="note">Chiediamo solo nome e cognome. Il PIN viene salvato cifrato. Il telefono viene riconosciuto da un codice casuale salvato nel browser: se cancelli i dati del browser o usi un altro browser, il responsabile dovrà riassociarlo. Il profilo diventa attivo dopo l'approvazione del responsabile.</p>
+      <p class="note">Chiediamo solo nome e cognome. Il PIN viene salvato cifrato. Il telefono viene riconosciuto da un codice casuale salvato nel browser: se cancelli i dati del browser o usi un altro browser, il responsabile dovrà riassociarlo.</p>
     </form>
 
     <!-- Ho già un PIN -->
@@ -354,15 +354,15 @@ async function phoneMode(token) {
       const r = await apiPost({ action: 'enroll', ticket, deviceId: dev, nome, cognome, pin });
       if (r.ok) {
         $('p-result').innerHTML = '<div style="font-size:44px">📝</div>' +
-          '<div class="big">Registrazione inviata</div>' +
-          '<p style="margin:10px 0 0">' + esc(r.name) + ', il responsabile deve approvare il profilo. Poi inquadra di nuovo il QR per timbrare.</p>' +
+          '<div class="big">Registrazione completata</div>' +
+          '<p style="margin:10px 0 0">' + esc(r.name) + ', da ora questo telefono è registrato a tuo nome. Inquadra di nuovo il QR per timbrare.</p>' +
           '<div class="msg warn">Questa registrazione NON vale come timbratura.</div>';
         phoneView('p-result');
       } else {
         msg(out, 'err', r.error);
       }
     } catch (e) {
-      msg(out, 'err', 'Connessione non riuscita: registrazione NON inviata. Riprova.');
+      msg(out, 'err', 'Connessione non riuscita: registrazione NON completata. Riprova.');
     }
     btn.disabled = false; btn.textContent = 'Registrati';
   };
