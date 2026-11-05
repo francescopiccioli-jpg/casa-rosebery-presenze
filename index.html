@@ -81,6 +81,7 @@
   .keypad button { font-size: 26px; background: #fff; color: var(--ink); border: 1px solid var(--line); padding: 18px 0; }
   .pin-dots { text-align: center; font-size: 34px; letter-spacing: .4em; min-height: 46px; }
   .row { display: flex; gap: 10px; }
+  .hello { margin: 0 0 18px; font-size: 20px; }
 </style>
 </head>
 <body>
@@ -96,18 +97,73 @@
   <!-- Timbratura da telefono -->
   <section id="v-phone" class="hidden">
     <div id="p-loading" class="card"><p style="margin:0">Verifica del codice…</p></div>
-    <form id="p-form" class="card hidden" autocomplete="off">
-      <div class="field">
-        <label for="p-name">Chi sei?</label>
-        <select id="p-name" required></select>
-      </div>
+
+    <!-- Telefono già registrato -->
+    <form id="p-me" class="card hidden" autocomplete="off">
+      <p class="hello">Ciao <b id="p-hello"></b></p>
       <div class="field">
         <label for="p-pin">PIN</label>
         <input id="p-pin" class="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" required>
       </div>
-      <button id="p-submit" type="submit">Timbra</button>
-      <p class="note">Al momento della timbratura il telefono chiede la posizione. Serve solo a verificare che tu sia nel locale: la posizione non viene salvata, si registra solo l'esito (dentro/fuori). Se preferisci non usare il telefono, puoi timbrare dal tablet con il PIN.</p>
+      <button type="submit">Timbra</button>
+      <p class="note">Al momento della timbratura il telefono chiede la posizione. Serve solo a verificare che tu sia nel locale: la posizione non viene salvata, si registra solo l'esito (dentro/fuori). Se non sei tu, non timbrare: questo telefono è registrato a nome di un collega.</p>
     </form>
+
+    <!-- Profilo in attesa -->
+    <div id="p-pending" class="card hidden">
+      <p style="margin:0">Questo telefono è registrato a nome di <b id="p-pending-name"></b>, ma il profilo non è ancora attivo.</p>
+      <p class="note">Chiedi al responsabile di approvarlo. Poi inquadra di nuovo il QR.</p>
+    </div>
+
+    <!-- Telefono non registrato -->
+    <div id="p-choose" class="card hidden">
+      <p style="margin:0 0 18px">Questo telefono non è ancora registrato.</p>
+      <button type="button" id="c-new">Primo accesso: registrati</button>
+      <div style="height:10px"></div>
+      <button type="button" class="ghost" id="c-known">Ho già un PIN</button>
+      <p class="note">«Ho già un PIN» serve se il responsabile ti ha già creato il profilo, o se hai cambiato telefono e il responsabile ha scollegato quello vecchio.</p>
+    </div>
+
+    <!-- Registrazione -->
+    <form id="p-enroll" class="card hidden" autocomplete="off">
+      <div class="field">
+        <label for="e-nome">Nome</label>
+        <input id="e-nome" autocomplete="given-name" maxlength="30" required>
+      </div>
+      <div class="field">
+        <label for="e-cognome">Cognome</label>
+        <input id="e-cognome" autocomplete="family-name" maxlength="30" required>
+      </div>
+      <div class="field">
+        <label for="e-pin">Scegli un PIN (4–6 cifre)</label>
+        <input id="e-pin" class="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" required>
+      </div>
+      <div class="field">
+        <label for="e-pin2">Ripeti il PIN</label>
+        <input id="e-pin2" class="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" required>
+      </div>
+      <button type="submit">Registrati</button>
+      <div style="height:10px"></div>
+      <button type="button" class="ghost" data-back>Indietro</button>
+      <p class="note">Chiediamo solo nome e cognome. Il PIN viene salvato cifrato. Il telefono viene riconosciuto da un codice casuale salvato nel browser: se cancelli i dati del browser o usi un altro browser, il responsabile dovrà riassociarlo. Il profilo diventa attivo dopo l'approvazione del responsabile.</p>
+    </form>
+
+    <!-- Ho già un PIN -->
+    <form id="p-known" class="card hidden" autocomplete="off">
+      <div class="field">
+        <label for="k-name">Chi sei?</label>
+        <select id="k-name" required></select>
+      </div>
+      <div class="field">
+        <label for="k-pin">PIN</label>
+        <input id="k-pin" class="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" required>
+      </div>
+      <button type="submit">Timbra</button>
+      <div style="height:10px"></div>
+      <button type="button" class="ghost" data-back>Indietro</button>
+      <p class="note">Questo telefono verrà associato a te. Se hai già un altro telefono registrato, la timbratura viene rifiutata e segnalata.</p>
+    </form>
+
     <div id="p-result" class="card result hidden"></div>
     <div id="p-msg"></div>
   </section>
@@ -161,6 +217,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxUpVZNXxo30YoiBzTCnKnN
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const store = {
+  ok: (() => { try { localStorage.setItem('cr_t', '1'); const v = localStorage.getItem('cr_t'); localStorage.removeItem('cr_t'); return v === '1'; } catch (e) { return false; } })(),
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 };
@@ -186,18 +243,20 @@ function resultHtml(r) {
   let warn = '';
   if (r.area === 'NO') warn = 'Risulti fuori dal locale: la timbratura è registrata ma verrà segnalata.';
   else if (r.area === 'Non rilevata') warn = 'Posizione non disponibile: la timbratura è registrata ma verrà segnalata.';
-  else if (r.device === 'DIVERSO' || String(r.device).indexOf('Telefono di') === 0) warn = 'Stai usando un telefono diverso dal solito: la timbratura verrà segnalata.';
+
   return '<div style="font-size:44px">' + (r.type === 'Entrata' ? '👋' : '✅') + '</div>' +
     '<div class="big">' + esc(r.type) + ' registrata</div>' +
     '<div class="time">' + esc(r.time) + '</div>' +
     '<p style="margin:6px 0 0">' + esc(r.name) + '</p>' +
-    (warn ? '<div class="msg warn">' + esc(warn) + '</div>' : '');
+    (warn ? '<div class="msg warn">' + esc(warn) + '</div>' : '') +
+    (r.device === 'Associato ora' ? '<div class="msg ok">Questo telefono ora è registrato a tuo nome: dalla prossima volta basterà il PIN.</div>' : '');
 }
 
 function deviceId() {
   let id = store.get('cr_device');
   if (!id) {
-    id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)));
+    id = crypto.randomUUID ? crypto.randomUUID()
+      : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
     store.set('cr_device', id);
   }
   return id;
@@ -215,52 +274,98 @@ function getPosition() {
 }
 
 /* ================= TELEFONO ================= */
+const PHONE_VIEWS = ['p-me', 'p-pending', 'p-choose', 'p-enroll', 'p-known', 'p-result'];
+function phoneView(id) { PHONE_VIEWS.forEach(v => v === id ? show(v) : hide(v)); msg($('p-msg'), '', ''); }
+
 async function phoneMode(token) {
   show('v-phone');
   history.replaceState(null, '', location.pathname);   // il codice non resta nella cronologia
   const out = $('p-msg');
+  if (!store.ok) {
+    hide('p-loading');
+    return msg(out, 'err', 'Il browser non permette di salvare dati (forse sei in navigazione privata). Apri il QR con il browser normale del telefono.');
+  }
+  const dev = deviceId();
   let ticket;
   try {
-    const r = await apiGet({ action: 'open', t: token });
+    const r = await apiGet({ action: 'open', t: token, d: dev });
     hide('p-loading');
     if (!r.ok) return msg(out, 'err', r.error);
     ticket = r.ticket;
-    const sel = $('p-name');
-    const saved = store.get('cr_name');
-    sel.innerHTML = '<option value="">Seleziona il tuo nome</option>' +
-      r.staff.map(n => '<option' + (n === saved ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
-    show('p-form');
-    (saved && r.staff.includes(saved) ? $('p-pin') : sel).focus();
+    if (r.me && r.me.active) {
+      $('p-hello').textContent = r.me.name;
+      phoneView('p-me'); $('p-pin').focus();
+    } else if (r.me) {
+      $('p-pending-name').textContent = r.me.name;
+      phoneView('p-pending');
+    } else {
+      $('k-name').innerHTML = '<option value="">Seleziona il tuo nome</option>' +
+        r.staff.map(n => '<option>' + esc(n) + '</option>').join('');
+      phoneView('p-choose');
+    }
   } catch (e) {
     hide('p-loading');
     return msg(out, 'err', 'Connessione non riuscita. Controlla internet e inquadra di nuovo il QR.');
   }
 
-  $('p-form').addEventListener('submit', async ev => {
-    ev.preventDefault();
-    const name = $('p-name').value, pin = $('p-pin').value.trim();
-    if (!name) return msg(out, 'err', 'Seleziona il tuo nome.');
+  $('c-new').onclick = () => { phoneView('p-enroll'); $('e-nome').focus(); };
+  $('c-known').onclick = () => phoneView('p-known');
+  document.querySelectorAll('#v-phone [data-back]').forEach(b => b.onclick = () => phoneView('p-choose'));
+
+  async function doPunch(form, extra, pinInput) {
+    const pin = pinInput.value.trim();
     if (!/^\d{4,6}$/.test(pin)) return msg(out, 'err', 'Il PIN ha da 4 a 6 cifre.');
-    const btn = $('p-submit');
+    const btn = form.querySelector('button[type=submit]');
     btn.disabled = true; btn.textContent = 'Rilevo la posizione…'; msg(out, '', '');
     const pos = await getPosition();
     btn.textContent = 'Registro…';
     try {
-      const r = await apiPost(Object.assign({ action: 'punch', ticket, name, pin, deviceId: deviceId() }, pos || {}));
+      const r = await apiPost(Object.assign({ action: 'punch', ticket, pin, deviceId: dev }, extra, pos || {}));
       if (r.ok) {
-        store.set('cr_name', name);
-        hide('p-form');
         $('p-result').innerHTML = resultHtml(r);
-        show('p-result');
+        phoneView('p-result');
       } else {
         msg(out, 'err', r.error);
-        $('p-pin').value = '';
       }
     } catch (e) {
       msg(out, 'err', 'Connessione non riuscita: la timbratura NON è stata registrata. Riprova.');
     }
+    pinInput.value = '';
     btn.disabled = false; btn.textContent = 'Timbra';
-  });
+  }
+
+  $('p-me').onsubmit = ev => { ev.preventDefault(); doPunch($('p-me'), {}, $('p-pin')); };
+  $('p-known').onsubmit = ev => {
+    ev.preventDefault();
+    const name = $('k-name').value;
+    if (!name) return msg(out, 'err', 'Seleziona il tuo nome.');
+    doPunch($('p-known'), { name }, $('k-pin'));
+  };
+
+  $('p-enroll').onsubmit = async ev => {
+    ev.preventDefault();
+    const nome = $('e-nome').value.trim(), cognome = $('e-cognome').value.trim();
+    const pin = $('e-pin').value.trim(), pin2 = $('e-pin2').value.trim();
+    if (!/^\d{4,6}$/.test(pin)) return msg(out, 'err', 'Il PIN deve avere da 4 a 6 cifre.');
+    if (pin !== pin2) { $('e-pin2').value = ''; return msg(out, 'err', 'I due PIN non coincidono.'); }
+    const btn = $('p-enroll').querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Invio…'; msg(out, '', '');
+    try {
+      const r = await apiPost({ action: 'enroll', ticket, deviceId: dev, nome, cognome, pin });
+      if (r.ok) {
+        $('p-result').innerHTML = '<div style="font-size:44px">📝</div>' +
+          '<div class="big">Registrazione inviata</div>' +
+          '<p style="margin:10px 0 0">' + esc(r.name) + ', il responsabile deve approvare il profilo. Poi inquadra di nuovo il QR per timbrare.</p>' +
+          '<div class="msg warn">Questa registrazione NON vale come timbratura.</div>';
+        phoneView('p-result');
+      } else {
+        msg(out, 'err', r.error);
+      }
+    } catch (e) {
+      msg(out, 'err', 'Connessione non riuscita: registrazione NON inviata. Riprova.');
+    }
+    btn.disabled = false; btn.textContent = 'Registrati';
+  };
 }
 
 /* ================= TABLET ================= */
